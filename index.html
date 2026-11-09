@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeFlow | Minimalist Typing Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .char { position: relative; transition: color 0.1s; }
+        .char.correct { color: #10b981; }
+        .char.incorrect { color: #ef4444; background-color: rgba(239, 68, 68, 0.2); }
+        .char.current { border-bottom: 2px solid #6366f1; animation: blink 1s infinite; }
+        @keyframes blink {
+            0%, 100% { border-color: transparent; }
+            50% { border-color: #6366f1; }
+        }
+        .hidden-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#111827',
+                        darkSurface: '#1f2937',
+                        accent: '#6366f1',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-200 min-h-screen transition-colors duration-300">
+    <!-- Navigation -->
+    <nav class="max-w-5xl mx-auto px-6 py-8 flex justify-between items-center">
+        <div class="text-2xl font-bold tracking-tighter text-accent cursor-pointer" id="nav-home">
+            Type<span class="text-gray-900 dark:text-white">Flow</span>
+        </div>
+        <div class="flex gap-6 items-center">
+            <button id="btn-view-typing" class="text-sm font-medium hover:text-accent transition-colors text-accent">Typing</button>
+            <button id="btn-view-stats" class="text-sm font-medium hover:text-accent transition-colors text-gray-500 dark:text-gray-400">Statistics</button>
+            <button id="btn-update-paragraphs" class="text-sm font-medium hover:text-accent transition-colors text-gray-500 dark:text-gray-400">Change Text</button>
+            <button id="theme-toggle" class="p-2 rounded-lg bg-gray-200 dark:bg-darkSurface hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">
+                <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6 py-12">
+        <!-- Text Loading Fallback -->
+        <div id="text-load-error" class="hidden mb-8 p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl text-center space-y-4">
+            <p>Could not load <strong>paragraphs.txt</strong> automatically. This usually happens when opening the file directly from your folder.</p>
+            <div class="flex justify-center">
+                <label class="px-4 py-2 bg-red-600 text-white rounded-lg cursor-pointer hover:bg-red-500 transition-colors font-medium">
+                    Upload paragraphs.txt
+                    <input type="file" id="paragraphs-upload" class="hidden" accept=".txt">
+                </label>
+            </div>
+        </div>
+
+        <!-- Typing View -->
+        <section id="view-typing" class="space-y-12">
+
+            <div id="typing-container" class="relative max-w-4xl mx-auto cursor-text group">
+                <div id="text-display" class="mono text-2xl leading-relaxed text-gray-400 dark:text-gray-500 select-none text-left break-words">
+                    <!-- Text will be injected here -->
+                </div>
+                <input type="text" id="hidden-input" class="hidden-input" autofocus>
+            </div>
+
+            <div id="typing-container" class="relative max-w-4xl mx-auto cursor-text group">
+                <div id="text-display" class="mono text-2xl leading-relaxed text-gray-400 dark:text-gray-500 select-none text-left break-words">
+                    <!-- Text will be injected here -->
+                </div>
+                <input type="text" id="hidden-input" class="hidden-input" autofocus>
+            </div>
+
+            <div class="flex justify-center">
+                <button id="btn-reset" class="p-3 rounded-full bg-gray-200 dark:bg-darkSurface hover:bg-gray-300 dark:hover:bg-gray-700 transition-all group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-active:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- Stats View -->
+        <section id="view-stats" class="hidden space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-100 dark:bg-darkSurface p-6 rounded-2xl shadow-lg text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-1">Personal Best</p>
+                    <p id="stat-best-wpm" class="text-4xl font-bold text-accent">0 <span class="text-lg font-normal text-gray-500">WPM</span></p>
+                </div>
+                <div class="bg-gray-100 dark:bg-darkSurface p-6 rounded-2xl shadow-lg text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-1">Average Speed</p>
+                    <p id="stat-avg-wpm" class="text-4xl font-bold text-accent">0 <span class="text-lg font-normal text-gray-500">WPM</span></p>
+                </div>
+                <div class="bg-gray-100 dark:bg-darkSurface p-6 rounded-2xl shadow-lg text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-1">Avg Accuracy</p>
+                    <p id="stat-avg-acc" class="text-4xl font-bold text-accent">0 <span class="text-lg font-normal text-gray-500">%</span></p>
+                </div>
+            </div>
+
+            <div class="bg-gray-100 dark:bg-darkSurface p-6 rounded-2xl shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">Performance Trend</h3>
+                    <div class="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-lg text-xs">
+                        <button id="btn-chart-sessions" class="chart-toggle-btn px-3 py-1 rounded-md transition-all bg-accent text-white font-medium">Sessions</button>
+                        <button id="btn-chart-dates" class="chart-toggle-btn px-3 py-1 rounded-md transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Dates</button>
+                    </div>
+                </div>
+                <div class="h-64 w-full">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-gray-100 dark:bg-darkSurface rounded-2xl shadow-lg overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs uppercase">
+                        <tr>
+                            <th class="px-6 py-3">Date</th>
+                            <th class="px-6 py-3">Duration</th>
+                            <th class="px-6 py-3">WPM</th>
+                            <th class="px-6 py-3">Accuracy</th>
+                            <th class="px-6 py-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="text-sm divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end">
+                <button id="btn-clear-history" class="text-xs text-gray-500 hover:text-red-400 transition-colors">Clear All History</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Results Modal -->
+    <div id="modal-results" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+        <div class="bg-white dark:bg-darkSurface p-8 rounded-3xl max-w-md w-full shadow-2xl transform transition-all scale-95 opacity-0" id="modal-content">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Test Complete!</h2>
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="bg-gray-100 dark:bg-darkBg p-4 rounded-2xl text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs uppercase mb-1">WPM</p>
+                    <p id="res-wpm" class="text-4xl font-bold text-accent">0</p>
+                </div>
+                <div class="bg-gray-100 dark:bg-darkBg p-4 rounded-2xl text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs uppercase mb-1">Accuracy</p>
+                    <p id="res-acc" class="text-4xl font-bold text-accent">0%</p>
+                </div>
+            </div>
+            <button id="btn-close-modal" class="w-full py-4 bg-accent hover:bg-indigo-500 text-white font-bold rounded-2xl transition-colors">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/text-provider.js"></script>
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/engine.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
